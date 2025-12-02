@@ -9,11 +9,6 @@ from openai import OpenAI
 import io
 import re
 import base64
-import subprocess # Para checar a instalação
-
-# Tenta configurar o caminho do Tesseract se estiver rodando local (Streamlit Cloud já deve fazer isso)
-# Tente comentar esta linha se der erro na nuvem
-# subprocess.run(['tesseract', '-v'], capture_output=True) 
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -30,29 +25,44 @@ if 'resolution_base' not in st.session_state:
     st.session_state.resolution_base = ""
 
 # --- GLOBAL KEY RETRIEVAL (SEGURANÇA MÁXIMA) ---
-MARITACA_KEY = st.secrets.get("api_gpt_assistente")
-OPENAI_KEY = st.secrets.get("OPENAI_API_KEY")
+MARITACA_KEY = st.secrets.get("api_gpt_assistente") # Sua chave Sabiá
+OPENAI_KEY = st.secrets.get("OPENAI_API_KEY") # Sua chave Visão
 
 if not MARITACA_KEY:
-    st.error("❌ ERRO DE SEGURANÇA: Chave Maritaca não encontrada no Secrets. Configure 'api_gpt_assistente'.")
-    st.stop()
+    st.error("❌ ERRO DE SEGURANÇA: Chave Maritaca (api_gpt_assistente) não encontrada no Secrets. Configure para iniciar o Sabiá-3.")
+    st.stop() 
 
-# --- ESTILIZAÇÃO & CABEÇALHO (REMOVIDO PARA BREVIDADE) ---
+# --- ESTILIZAÇÃO & CABEÇALHO ---
+st.markdown("""
+<style>
+    .main {background-color: #f8f9fa;}
+    h1 {color: #0F172A; font-size: 2.2rem;}
+    .stButton>button {background-color: #0F172A; color: white; border-radius: 8px; height: 3.5em; width: 100%; font-weight: bold; margin-top: 10px;}
+    .stFileUploader {border-radius: 10px; border: 2px dashed #0F172A; padding: 15px;}
+    .stError {background-color: #f8d7da; color: #842029; border-radius: 8px;}
+    .block-container {padding-top: 2rem; padding-bottom: 2rem;}
+</style>
+""", unsafe_allow_html=True)
+
 st.image("https://img.icons8.com/color/96/000000/brain--v1.png", width=70)
 st.title("BrainX Neural ENEM Architect")
 st.markdown("### Núcleo de Inteligência Artificial | **Powered by XTRI**")
 st.markdown("---")
 
-# --- SIDEBAR (STATUS) ---
+# --- SIDEBAR ---
 st.sidebar.header("⚙️ Status do Sistema")
 st.sidebar.success("✅ Conexão Segura Ativa")
-modo = st.sidebar.radio("Ferramenta:", ["📸 Resolver Questão (OCR)", "🧭 Rota de Estudos por TRI"])
-st.sidebar.info("v5.0 Stable | Powered by XTRI")
+
+modo = st.sidebar.radio("Ferramenta:", 
+    ["📸 Resolver Questão (OCR)", "🧭 Rota de Estudos por TRI"]
+)
+st.sidebar.info("v4.2 Final Stable | Powered by XTRI")
 
 # --- FUNÇÕES NÚCLEO (API) ---
 
 def corrigir_latex_visual(texto):
     if not texto: return ""
+    # Corrige os padrões acadêmicos para o formato renderizável $$
     texto = re.sub(r'\\\[\s*(.*?)\s*\\\]', r'$$\1$$', texto)
     texto = re.sub(r'\\\(\s*(.*?)\s*\\\)', r'$\1$', texto)
     texto = re.sub(r'\[\s*(.*?)\s*\]', r'$$\1$$', texto)
@@ -92,18 +102,29 @@ def ler_imagem_gpt4o(base64_image):
 def encode_image(image_file):
     return base64.b64encode(image_file.getvalue()).decode('utf-8')
 
-# --- MÓDULO 1: RESOLVER QUESTÃO (OCR) ---
+# FUNÇÃO CENTRAL DE INTERAÇÃO (Para uso na caixa de chat)
+def handle_follow_up(user_input):
+    contexto_completo = f"CONTEÚDO BASE (RESOLUÇÃO ANTERIOR): {st.session_state.resolution_base}\n\nDÚVIDA DO ALUNO: {user_input}"
+    response = chamar_brainx(contexto_completo, MARITACA_KEY, temperatura=0.1)
+    
+    st.session_state.chat_history.append({"role": "user", "content": user_input})
+    st.session_state.chat_history.append({"role": "assistant", "content": response})
+
+    st.rerun() # <<< USANDO ST.RERUN() CORRETO
+
+# ==============================================================================
+# MÓDULO 1: RESOLVER QUESTÃO (OCR)
+# ==============================================================================
 if modo == "📸 Resolver Questão (OCR)":
     st.header("🎓 Resolução Sênior (BrainX)")
     
-    # ... (Fluxo de upload e chat mantido) ...
-    # O código aqui é longo, mas garante que não haja conflitos de variável.
-    
+    # Botão de Reset
     if st.button("Limpar Sessão e Começar Novo"):
         st.session_state.resolution_base = ""
         st.session_state.chat_history = []
         st.rerun()
 
+    # --- FLUXO INICIAL (Geração da Resolução Base) ---
     if not st.session_state.resolution_base:
         st.markdown("**1. Upload do Print:**")
         arquivo = st.file_uploader("Subir Print da Tela (Imagem):", type=["png", "jpg", "jpeg"])
@@ -132,6 +153,7 @@ if modo == "📸 Resolver Questão (OCR)":
                 st.session_state.chat_history = [{"role": "assistant", "content": resposta_base}]
                 st.rerun() 
 
+    # --- CHAT DE TUTORIA INTERATIVA ---
     else:
         st.subheader("💬 Tutoria Interativa BrainX")
         with st.expander("Ver Resolução Base", expanded=False):
@@ -146,24 +168,28 @@ if modo == "📸 Resolver Questão (OCR)":
         if user_input and st.session_state.resolution_base:
             handle_follow_up(user_input)
 
-# --- MÓDULO 2: ROTA TRI (MANTIDO) ---
+# ==============================================================================
+# MÓDULO 2: ROTA TRI (SEM UPLOAD)
+# ==============================================================================
 elif modo == "🧭 Rota de Estudos por TRI":
-    # ... (Módulo 2 mantido, pois o erro não estava aqui) ...
     st.header("📊 Rota Estratégica (TRI)")
     st.markdown("O BrainX irá consultar a base **'conteudos ENEM separados por TRI.csv'** para calibrar sua rota.")
     
+    # 1. Configurações
     st.markdown("**Defina seu perfil:**")
     area_foco = st.selectbox("Área de Foco:", ["Matemática e suas Tecnologias", "Ciências da Natureza", "Ciências Humanas", "Linguagens e Códigos"])
     nivel_atual = st.select_slider("Seu Nível Atual:", options=["Iniciante (<500)", "Intermediário (500-700)", "Avançado (>700)", "Elite (800+)"], value="Intermediário (500-700)")
 
+    # 2. Ação (Sem Upload)
     if st.button("Gerar Rota XTRI"):
         
+        # PROMPT COM INSTRUÇÃO DE CONSULTA OBRIGATÓRIA AO ARQUIVO
         prompt_rota = f"""
 Atue como o BrainX Architect (Especialista em TRI e Matriz de Referência do ENEM).
 O aluno deseja aumentar sua nota em **{area_foco}**.
 Nível Atual: **{nivel_atual}**.
 
-ACESSO À BASE DE CONHECIMENTO:
+ACESSO À BASE DE CONHECIMENTO (Obrigatório):
 Consulte o arquivo "conteudos ENEM separados por TRI.csv" da nossa base XTRI.
 
 TAREFA OBRIGATÓRIA:
