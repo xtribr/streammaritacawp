@@ -3,6 +3,10 @@ import requests
 import pandas as pd
 import matplotlib.pyplot as plt
 import time
+import pdfplumber
+import pytesseract
+from PIL import Image
+import io
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -12,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- ESTILIZAÇÃO CSS (Visual Profissional) ---
+# --- ESTILIZAÇÃO CSS ---
 st.markdown("""
 <style>
     .main {background-color: #f8f9fa;}
@@ -25,10 +29,9 @@ st.markdown("""
         width: 100%;
         font-weight: bold;
     }
-    .stTextArea>div>div>textarea {background-color: #ffffff; border-radius: 8px;}
+    .stFileUploader {border-radius: 10px; border: 2px dashed #1E3A8A; padding: 10px;}
     .stSuccess {background-color: #d1e7dd; color: #0f5132;}
-    .stWarning {background-color: #fff3cd; color: #664d03;}
-    .stError {background-color: #f8d7da; color: #842029;}
+    .stInfo {background-color: #cff4fc; color: #055160;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -40,166 +43,162 @@ with col2:
     st.title("Neural ENEM Architect")
     st.markdown("**Núcleo de Inteligência Artificial | Powered by Sabiá-3**")
 
-# --- SIDEBAR (CONFIGURAÇÃO) ---
-st.sidebar.header("⚙️ Configuração do Sistema")
+# --- SIDEBAR ---
+st.sidebar.header("⚙️ Configuração")
 
-# --- LÓGICA DE AUTENTICAÇÃO (AUTOMÁTICA) ---
-# O código busca exatamente a chave 'api_gpt_assistente' nos segredos
 if "api_gpt_assistente" in st.secrets:
     api_key = st.secrets["api_gpt_assistente"]
-    st.sidebar.success("✅ Chave de API Conectada (Segredo)")
+    st.sidebar.success("✅ API Conectada")
 else:
-    # Fallback apenas para testes locais se não houver segredo configurado
-    api_key = st.sidebar.text_input("Insira Chave (api_gpt_assistente):", type="password")
-    if not api_key:
-        st.sidebar.warning("⚠️ Configure 'api_gpt_assistente' no Streamlit Cloud.")
+    api_key = st.sidebar.text_input("Chave API:", type="password")
 
 st.sidebar.markdown("---")
-modo = st.sidebar.radio("Selecione o Módulo:", 
-    ["📝 Resolver Questão (Tutor)", "🗺️ Gerar Rota de Estudos", "📊 Dashboard Preditivo"]
+# Menu simplificado conforme seu pedido
+modo = st.sidebar.radio("Ferramenta:", 
+    ["📸 Resolver Questão (OCR/PDF)", "🧭 Rota de Estudos por TRI"]
 )
-st.sidebar.markdown("---")
-st.sidebar.info("v2.0 Stable | Engine: Sabiá-3.1")
+st.sidebar.info("v3.0 | Vision Enabled")
 
-# --- FUNÇÃO DE CHAMADA À API (BACKEND) ---
-# Cache ativado para economizar seus créditos
+# --- FUNÇÕES AUXILIARES (OCR & API) ---
+
 @st.cache_data(show_spinner=False)
 def chamar_sabia(prompt, temperatura=0.0):
-    if not api_key:
-        return "⚠️ ERRO CRÍTICO: Chave de API não encontrada."
+    if not api_key: return "⚠️ ERRO: Chave API ausente."
     
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    
-    # Configuração exata para o Sabiá-3
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     data = {
         "model": "sabia-3", 
         "messages": [{"role": "user", "content": prompt}],
         "temperature": temperatura,
-        "max_tokens": 2500
+        "max_tokens": 3000
     }
     
     try:
         response = requests.post("https://chat.maritaca.ai/api/chat/completions", headers=headers, json=data)
-        
         if response.status_code == 200:
             return response.json()['choices'][0]['message']['content']
-        elif response.status_code == 401:
-            return "❌ Erro 401: Chave Inválida. Verifique se 'api_gpt_assistente' contém uma chave Maritaca válida."
-        else:
-            return f"Erro na API ({response.status_code}): {response.text}"
-            
+        return f"Erro API ({response.status_code}): {response.text}"
     except Exception as e:
-        return f"Erro de Conexão: {str(e)}"
+        return f"Erro Conexão: {str(e)}"
+
+def extrair_texto_arquivo(uploaded_file):
+    texto = ""
+    try:
+        if uploaded_file.type == "application/pdf":
+            with pdfplumber.open(uploaded_file) as pdf:
+                for page in pdf.pages:
+                    texto += page.extract_text() + "\n"
+        elif uploaded_file.type in ["image/png", "image/jpeg", "image/jpg"]:
+            image = Image.open(uploaded_file)
+            # Tenta usar OCR. Se falhar no servidor, avisa.
+            try:
+                texto = pytesseract.image_to_string(image, lang='por')
+            except:
+                st.error("⚠️ Ocorreu um erro no motor de OCR (Tesseract). O servidor pode não ter a biblioteca instalada.")
+                return None
+    except Exception as e:
+        st.error(f"Erro ao ler arquivo: {e}")
+        return None
+    return texto
 
 # ==============================================================================
-# MÓDULO 1: RESOLVER QUESTÃO (O TUTOR)
+# MÓDULO 1: RESOLVER QUESTÃO (OCR/PDF)
 # ==============================================================================
-if modo == "📝 Resolver Questão (Tutor)":
-    st.subheader("🎓 Resolução Sênior (Protocolo 7 Passos)")
-    st.markdown("Cole a questão abaixo. O sistema aplicará o método **Chain-of-Thought** para garantir precisão.")
+if modo == "📸 Resolver Questão (OCR/PDF)":
+    st.subheader("🎓 Resolução Sênior (Suporte a Print e PDF)")
+    st.markdown("Faça upload do print da questão ou digite o texto.")
     
-    questao = st.text_area("Enunciado da Questão:", height=200, placeholder="Ex: (ENEM 2023) Texto base...")
+    col_upload, col_texto = st.columns([1, 1])
     
-    if st.button("Resolver com Sabiá-3"):
-        if not questao:
-            st.warning("⚠️ Por favor, cole uma questão antes de processar.")
+    texto_extraido = ""
+    
+    with col_upload:
+        arquivo = st.file_uploader("Subir Print ou PDF:", type=["png", "jpg", "jpeg", "pdf"])
+        if arquivo:
+            with st.spinner("🔍 Extraindo texto da imagem/PDF..."):
+                texto_extraido = extrair_texto_arquivo(arquivo)
+                if texto_extraido:
+                    st.success("Texto extraído com sucesso!")
+                    with st.expander("Ver texto extraído"):
+                        st.text(texto_extraido)
+
+    with col_texto:
+        # Se houve upload, preenche a caixa. Se não, deixa digitar.
+        input_final = st.text_area("Texto da Questão:", value=texto_extraido if texto_extraido else "", height=300)
+
+    if st.button("Resolver com Protocolo 7 Passos"):
+        if not input_final:
+            st.warning("Precisamos da questão (Texto ou Arquivo).")
         else:
-            # O PROMPT MESTRE (METODOLOGIA DE ELITE)
             prompt_final = f"""
-VOCÊ É O SABIÁ-3. RESOLVA A QUESTÃO ABAIXO SEGUINDO RIGOROSAMENTE ESTE PROTOCOLO DE 7 PASSOS:
+VOCÊ É O SABIÁ-3. RESOLVA SEGUINDO O PROTOCOLO DE ELITE:
 
-PASSO 1: ANÁLISE INICIAL (Identifique dados, comando e contexto)
-PASSO 2: PLANEJAMENTO (Defina conceitos e fórmulas)
-PASSO 3: RESOLUÇÃO DETALHADA (Mostre o cálculo ou lógica passo a passo)
-PASSO 4: VALIDAÇÃO (Faça a prova real ou verifique consistência)
-PASSO 5: ANÁLISE DAS ALTERNATIVAS (Explique por que as erradas são distratores)
-PASSO 6: ESCOLHA FINAL (Selecione a correta)
-PASSO 7: VERIFICAÇÃO FINAL (Confirme se bate com o gabarito lógico)
+PASSO 1: ANÁLISE INICIAL (Dados e Comando)
+PASSO 2: PLANEJAMENTO (Conceitos)
+PASSO 3: RESOLUÇÃO DETALHADA (Cálculo/Lógica)
+PASSO 4: VALIDAÇÃO (Prova real)
+PASSO 5: ANÁLISE DAS ALTERNATIVAS (Justifique erros dos distratores)
+PASSO 6: ESCOLHA FINAL
+PASSO 7: VERIFICAÇÃO FINAL
 
-QUESTÃO DO ALUNO:
-{questao}
+QUESTÃO DO ALUNO (Pode conter erros de OCR, corrija mentalmente):
+{input_final}
 
-INSTRUCÃO FINAL:
-Ao terminar, pule uma linha e escreva em negrito: "**GABARITO: [Letra]**"
+RESPOSTA FINAL:
+Pule uma linha e escreva: "**GABARITO: [Letra]**"
 """
-            with st.spinner("🧠 Sabiá-3 está raciocinando..."):
-                inicio = time.time()
+            with st.spinner("🧠 Sabiá-3 analisando questão..."):
                 resposta = chamar_sabia(prompt_final)
-                tempo = time.time() - inicio
-            
-            # Exibição do Resultado
-            st.success(f"✅ Resolução concluída em {tempo:.1f} segundos.")
-            
-            with st.expander("Ver Raciocínio Completo", expanded=True):
                 st.markdown(resposta)
 
 # ==============================================================================
-# MÓDULO 2: GERAR ROTA DE ESTUDOS
+# MÓDULO 2: ROTA TRI (UPLOAD DE SLIDE/BOLETIM)
 # ==============================================================================
-elif modo == "🗺️ Gerar Rota de Estudos":
-    st.subheader("🧭 Planejador Estratégico (Pareto 80/20)")
-    st.markdown("Crie um cronograma focado nos conteúdos de maior incidência histórica.")
+elif modo == "🧭 Rota de Estudos por TRI":
+    st.subheader("📊 Diagnóstico e Rota Personalizada (TRI)")
+    st.markdown("Suba seu **Slide de Desempenho** ou **Boletim de Erros**. A IA vai cruzar seus erros com a Matriz de Referência.")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        materia = st.selectbox("Disciplina:", ["Matemática", "Física", "Química", "Biologia", "História", "Geografia", "Linguagens"])
-    with col2:
-        dias = st.slider("Duração do Plano (Dias):", 3, 30, 7)
+    col_area, col_file = st.columns([1, 2])
     
-    if st.button("Gerar Cronograma Personalizado"):
-        prompt_rota = f"""
-Atue como um Engenheiro Pedagógico do ENEM.
-Crie um Plano de Estudos de {dias} dias para a disciplina de {materia}.
+    with col_area:
+        area_foco = st.selectbox("Qual área focar?", ["Matemática", "Natureza", "Humanas", "Linguagens"])
+        nivel_atual = st.select_slider("Seu nível atual (TRI estimada):", options=["< 500", "500-600", "600-700", "700-800", "800+"], value="600-700")
 
-REGRAS OBRIGATÓRIAS:
-1. Aplique a Regra de Pareto (80/20): Selecione apenas os tópicos que mais caem na história da prova.
-2. Estruture dia a dia.
-3. Para cada dia, defina: "Foco Teórico", "Estratégia de Resolução" e "Meta de Questões".
-4. Gere uma tabela final com a carga horária sugerida.
+    with col_file:
+        arquivo_aluno = st.file_uploader("Subir Slide/Boletim (PDF/IMG):", type=["pdf", "png", "jpg"])
+
+    if st.button("Gerar Rota Estratégica"):
+        texto_aluno = ""
+        if arquivo_aluno:
+            with st.spinner("🔍 Lendo seu desempenho..."):
+                texto_aluno = extrair_texto_arquivo(arquivo_aluno)
+        
+        # Se não tiver arquivo, ele gera uma rota baseada apenas no nível
+        contexto_input = texto_aluno if texto_aluno else "Nenhum arquivo enviado. Gere rota baseada no nível TRI informado."
+
+        prompt_rota = f"""
+Atue como um Especialista em Psicometria e Matriz do ENEM.
+O aluno deseja aumentar sua nota em **{area_foco}**.
+Nível Atual estimado: **{nivel_atual}**.
+
+DADOS DO ALUNO (Do arquivo enviado):
+{contexto_input[:4000]} 
+
+TAREFA:
+1. **Diagnóstico TRI:** Baseado no nível e nos erros (se houver no texto), identifique quais Habilidades da Matriz ele está errando (Básicas, Operacionais ou Global).
+2. **Rota de Estudos:** Crie um plano sequencial para subir de nível.
+   - Se Nível Baixo: Foque em Matriz de Referência Básica (conteúdos que mais pontuam).
+   - Se Nível Alto: Foque em Habilidades de refino e conteúdos de baixa incidência (diferencial).
+3. **Tabela:** Liste: Conteúdo | Habilidade BNCC Provável | Importância na TRI.
+
+Seja técnico mas didático.
 """
-        with st.spinner("Analisando matriz de referência..."):
+        with st.spinner("Construindo estratégia pedagógica..."):
             plano = chamar_sabia(prompt_rota, temperatura=0.5)
             st.markdown(plano)
-
-# ==============================================================================
-# MÓDULO 3: DASHBOARD PREDITIVO
-# ==============================================================================
-elif modo == "📊 Dashboard Preditivo":
-    st.subheader("🔮 Tendências para o Próximo ENEM")
-    st.markdown("Análise estatística baseada no Banco de Dados Vetorial (3.000+ questões).")
-    
-    # Dados extraídos da nossa análise Python (fixos para performance do app)
-    data = {
-        'Tópico': [
-            'Interpretação de Texto (PT)', 'Matemática Básica', 'Geometria Plana/Espacial', 
-            'Ecologia e Meio Ambiente', 'História do Brasil (República)', 'Eletrodinâmica', 
-            'Geopolítica', 'Estequiometria', 'Funções e Gráficos', 'Filosofia/Sociologia'
-        ],
-        'Probabilidade de Cair (%)': [98, 95, 88, 85, 80, 78, 75, 72, 70, 65]
-    }
-    df = pd.DataFrame(data).sort_values(by='Probabilidade de Cair (%)', ascending=True)
-    
-    # Gráfico de Barras
-    fig, ax = plt.subplots(figsize=(10, 6))
-    bars = ax.barh(df['Tópico'], df['Probabilidade de Cair (%)'], color='#10B981')
-    
-    # Estilização do Gráfico
-    ax.set_xlabel("Probabilidade de Incidência (%)", fontsize=12)
-    ax.set_title("Top 10 Tópicos Quentes (Matriz de Referência)", fontsize=14, fontweight='bold')
-    ax.grid(axis='x', linestyle='--', alpha=0.7)
-    
-    # Adicionar valores nas barras
-    for bar in bars:
-        width = bar.get_width()
-        ax.text(width + 1, bar.get_y() + bar.get_height()/2, f'{width}%', va='center', fontweight='bold')
-
-    st.pyplot(fig)
-    
-    st.info("💡 **Insight:** Focar em 'Matemática Básica' e 'Interpretação' garante mais de 45% da nota total da prova devido à TRI.")
+            
+            st.info("💡 **Dica TRI:** Para subir de nível, garanta primeiro as questões fáceis (coerência pedagógica) antes de tentar as difíceis.")
 
 # --- RODAPÉ ---
 st.markdown("---")
-st.markdown("© 2025 Neural ENEM Architect | Desenvolvido com Tecnologia Sabiá-3")
+st.markdown("© 2025 Neural ENEM Architect")
