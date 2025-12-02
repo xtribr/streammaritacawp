@@ -2,5 +2,6 @@ streamlit
 requests
 pandas
 matplotlib
-openai  # Novo cliente para visão
+openai
 Pillow
+pytesseract  # A biblioteca que deu erro
