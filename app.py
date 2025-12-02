@@ -25,12 +25,12 @@ if 'resolution_base' not in st.session_state:
     st.session_state.resolution_base = ""
 
 # --- GLOBAL KEY RETRIEVAL (SEGURANÇA MÁXIMA) ---
-MARITACA_KEY = st.secrets.get("api_gpt_assistente") # Sua chave Sabiá
-OPENAI_KEY = st.secrets.get("OPENAI_API_KEY") # Sua chave Visão
+MARITACA_KEY = st.secrets.get("api_gpt_assistente")
+OPENAI_KEY = st.secrets.get("OPENAI_API_KEY")
 
 if not MARITACA_KEY:
     st.error("❌ ERRO DE SEGURANÇA: Chave Maritaca (api_gpt_assistente) não encontrada no Secrets. Configure para iniciar o Sabiá-3.")
-    st.stop() 
+    st.stop()
 
 # --- ESTILIZAÇÃO & CABEÇALHO ---
 st.markdown("""
@@ -53,26 +53,22 @@ st.markdown("---")
 st.sidebar.header("⚙️ Status do Sistema")
 st.sidebar.success("✅ Conexão Segura Ativa")
 
-modo = st.sidebar.radio("Ferramenta:", 
-    ["📸 Resolver Questão (OCR)", "🧭 Rota de Estudos por TRI"]
-)
+modo = st.sidebar.radio("Ferramenta:", ["📸 Resolver Questão (OCR)", "🧭 Rota de Estudos por TRI"])
 st.sidebar.info("v4.2 Final Stable | Powered by XTRI")
 
 # --- FUNÇÕES NÚCLEO (API) ---
 
 def corrigir_latex_visual(texto):
     if not texto: return ""
-    # Corrige os padrões acadêmicos para o formato renderizável $$
     texto = re.sub(r'\\\[\s*(.*?)\s*\\\]', r'$$\1$$', texto)
     texto = re.sub(r'\\\(\s*(.*?)\s*\\\)', r'$\1$', texto)
     texto = re.sub(r'\[\s*(.*?)\s*\]', r'$$\1$$', texto)
     return texto
 
 @st.cache_data(show_spinner=False)
-def chamar_brainx(prompt, api_key_maritaca):
+def chamar_brainx(prompt, api_key_maritaca, temperatura=0.0):
     headers = {"Authorization": f"Bearer {api_key_maritaca}", "Content-Type": "application/json"}
-    data = {"model": "sabia-3", "messages": [{"role": "user", "content": prompt}], "temperature": 0.0, "max_tokens": 3000}
-    
+    data = {"model": "sabia-3", "messages": [{"role": "user", "content": prompt}], "temperature": temperatura, "max_tokens": 3000}
     try:
         response = requests.post("https://chat.maritaca.ai/api/chat/completions", headers=headers, json=data)
         if response.status_code == 200:
@@ -81,17 +77,20 @@ def chamar_brainx(prompt, api_key_maritaca):
     except Exception as e:
         return f"Erro Conexão: {str(e)}"
 
-# OCR e Visão (GPT-4o) - Isolado para segurança
 def ler_imagem_gpt4o(base64_image):
-    if not OPENAI_KEY: return "❌ ERRO: Chave OpenAI ausente para Visão."
-    
+    if not OPENAI_KEY:
+        return "❌ ERRO: Chave OpenAI ausente para Visão."
     try:
         client = OpenAI(api_key=OPENAI_KEY)
         prompt_vision = "Analise esta imagem (screenshot de uma questão do ENEM). Extraia o enunciado completo, o comando final e TODAS as alternativas, mantendo a formatação e ordem exatas (A, B, C, D, E). Seja estritamente um leitor de OCR de alta qualidade."
-
         response = client.chat.completions.create(
             model="gpt-4o",
-            messages=[{"role": "user", "content": [{"type": "text", "text": prompt_vision}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}]}],
+            messages=[
+                {"role": "user", "content": [
+                    {"type": "text", "text": prompt_vision},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                ]}
+            ],
             max_tokens=1024,
             temperature=0.0
         )
@@ -102,95 +101,83 @@ def ler_imagem_gpt4o(base64_image):
 def encode_image(image_file):
     return base64.b64encode(image_file.getvalue()).decode('utf-8')
 
-# FUNÇÃO CENTRAL DE INTERAÇÃO (Para uso na caixa de chat)
 def handle_follow_up(user_input):
     contexto_completo = f"CONTEÚDO BASE (RESOLUÇÃO ANTERIOR): {st.session_state.resolution_base}\n\nDÚVIDA DO ALUNO: {user_input}"
     response = chamar_brainx(contexto_completo, MARITACA_KEY, temperatura=0.1)
-    
     st.session_state.chat_history.append({"role": "user", "content": user_input})
     st.session_state.chat_history.append({"role": "assistant", "content": response})
+    st.rerun()
 
-    st.rerun() # <<< USANDO ST.RERUN() CORRETO
-
-# ==============================================================================
-# MÓDULO 1: RESOLVER QUESTÃO (OCR)
-# ==============================================================================
+# --- MÓDULO 1: OCR ---
 if modo == "📸 Resolver Questão (OCR)":
     st.header("🎓 Resolução Sênior (BrainX)")
-    
-    # Botão de Reset
     if st.button("Limpar Sessão e Começar Novo"):
         st.session_state.resolution_base = ""
         st.session_state.chat_history = []
         st.rerun()
 
-    # --- FLUXO INICIAL (Geração da Resolução Base) ---
     if not st.session_state.resolution_base:
         st.markdown("**1. Upload do Print:**")
         arquivo = st.file_uploader("Subir Print da Tela (Imagem):", type=["png", "jpg", "jpeg"])
         texto_extraido = ""
-        
+
         if arquivo:
             if not OPENAI_KEY:
                 st.error("❌ Chave OpenAI ausente para leitura da imagem (GPT-4o).")
             else:
                 with st.spinner("👁️ GPT-4o Vision lendo e corrigindo texto..."):
                     texto_extraido = ler_imagem_gpt4o(encode_image(arquivo))
-                    if "ERRO" in texto_extraido: st.error(f"❌ Falha Vision: {texto_extraido}")
-                    else: st.success("Texto lido e corrigido!")
-                    
+                    if "ERRO" in texto_extraido:
+                        st.error(f"❌ Falha Vision: {texto_extraido}")
+                    else:
+                        st.success("Texto lido e corrigido!")
+
         st.markdown("**2. Enunciado:**")
         input_final = st.text_area("", value=texto_extraido if texto_extraido else "", height=250, placeholder="Cole ou edite a questão aqui...")
 
         if st.button("Gerar Resolução Base"):
-            if not input_final: st.warning("⚠️ Cole a questão primeiro.")
+            if not input_final:
+                st.warning("⚠️ Cole a questão primeiro.")
             else:
                 prompt_inicial = f"""[PROTOCOLO DE 7 PASSOS] RESOLVA A QUESTÃO:\n{input_final}\n\nRESPOSTA FINAL OBRIGATÓRIA: **GABARITO: [Letra]**"""
                 with st.spinner("🧠 Sabiá-3 gerando a resolução base..."):
                     resposta_base = chamar_brainx(prompt_inicial, MARITACA_KEY)
-                
                 st.session_state.resolution_base = resposta_base
                 st.session_state.chat_history = [{"role": "assistant", "content": resposta_base}]
-                st.rerun() 
+                st.rerun()
 
-    # --- CHAT DE TUTORIA INTERATIVA ---
     else:
         st.subheader("💬 Tutoria Interativa BrainX")
         with st.expander("Ver Resolução Base", expanded=False):
             st.markdown(corrigir_latex_visual(st.session_state.resolution_base))
-            
+
         for message in st.session_state.chat_history:
-            if message["role"] == "assistant": st.info(corrigir_latex_visual(message["content"]))
-            elif message["role"] == "user": st.markdown(f"**Você:** {message['content']}")
-                
+            if message["role"] == "assistant":
+                st.info(corrigir_latex_visual(message["content"]))
+            elif message["role"] == "user":
+                st.markdown(f"**Você:** {message['content']}")
+
         user_input = st.text_input("Sua Dúvida sobre a resolução:")
-        
         if user_input and st.session_state.resolution_base:
             handle_follow_up(user_input)
 
-# ==============================================================================
-# MÓDULO 2: ROTA TRI (SEM UPLOAD)
-# ==============================================================================
+# --- MÓDULO 2: ROTA TRI ---
 elif modo == "🧭 Rota de Estudos por TRI":
     st.header("📊 Rota Estratégica (TRI)")
     st.markdown("O BrainX irá consultar a base **'conteudos ENEM separados por TRI.csv'** para calibrar sua rota.")
-    
-    # 1. Configurações
+
     st.markdown("**Defina seu perfil:**")
     area_foco = st.selectbox("Área de Foco:", ["Matemática e suas Tecnologias", "Ciências da Natureza", "Ciências Humanas", "Linguagens e Códigos"])
     nivel_atual = st.select_slider("Seu Nível Atual:", options=["Iniciante (<500)", "Intermediário (500-700)", "Avançado (>700)", "Elite (800+)"], value="Intermediário (500-700)")
 
-    # 2. Ação (Sem Upload)
     if st.button("Gerar Rota XTRI"):
-        
-        # PROMPT COM INSTRUÇÃO DE CONSULTA OBRIGATÓRIA AO ARQUIVO
         prompt_rota = f"""
 Atue como o BrainX Architect (Especialista em TRI e Matriz de Referência do ENEM).
 O aluno deseja aumentar sua nota em **{area_foco}**.
 Nível Atual: **{nivel_atual}**.
 
 ACESSO À BASE DE CONHECIMENTO (Obrigatório):
-Consulte o arquivo "conteudos ENEM separados por TRI.csv" da nossa base XTRI.
+Consulte o arquivo \"conteudos ENEM separados por TRI.csv\" da nossa base XTRI.
 
 TAREFA OBRIGATÓRIA:
 1. **Diagnóstico Matriz:** Explique quais competências da Matriz de Referência este nível de aluno precisa dominar.
@@ -198,18 +185,15 @@ TAREFA OBRIGATÓRIA:
    - Coluna 1: Conteúdo
    - Coluna 2: Habilidade Matriz (Ex: H17, H21)
    - Coluna 3: Classificação TRI (Copie EXATAMENTE o termo que está na coluna de classificação do arquivo CSV. Use a nomenclatura do arquivo, não Alta/Média).
-   
 3. **Plano de Ação:** Como estudar esses 10 itens na ordem correta para maximizar a nota (TRI prioriza coerência: fáceis primeiro).
 
 Seja técnico e use a terminologia exata da nossa base XTRI.
 """
         with st.spinner("🔄 Consultando base de inteligência TRI..."):
-            plano = chamar_brainx(prompt_rota, MARITACA_KEY, temperatura=0.2) 
+            plano = chamar_brainx(prompt_rota, MARITACA_KEY, temperatura=0.2)
             st.markdown("### 🧭 Plano de Ação XTRI")
             st.markdown(plano)
-            
             st.info("💡 **Nota do BrainX:** Esta lista respeita a hierarquia da TRI encontrada no arquivo CSV oficial da XTRI.")
 
-# --- RODAPÉ ---
 st.markdown("---")
 st.markdown("© 2025 BrainX | **Powered by XTRI**")
