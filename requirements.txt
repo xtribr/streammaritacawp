@@ -2,3 +2,8 @@ streamlit
 requests
 pandas
 matplotlib
+pdfplumber
+pytesseract
+Pillow
+pdf2image
+
