@@ -1,11 +1,9 @@
 import streamlit as st
 import requests
 import pandas as pd
-import matplotlib.pyplot as plt
 import time
 import pytesseract
-from PIL import Image, ImageEnhance, ImageFilter
-from openai import OpenAI
+from PIL import Image
 import io
 import re
 import base64
@@ -27,7 +25,6 @@ if 'resolution_base' not in st.session_state:
 
 # --- GLOBAL KEY RETRIEVAL (SEGURANÇA MÁXIMA) ---
 MARITACA_KEY = st.secrets.get("api_gpt_assistente")
-OPENAI_KEY = st.secrets.get("OPENAI_API_KEY")
 
 if not MARITACA_KEY:
     st.error("❌ ERRO DE SEGURANÇA: Chave Maritaca (api_gpt_assistente) não encontrada no Secrets. Configure para iniciar o Sabiá-3.")
@@ -78,27 +75,6 @@ def chamar_brainx(prompt, api_key_maritaca, temperatura=0.0):
     except Exception as e:
         return f"Erro Conexão: {str(e)}"
 
-def ler_imagem_gpt4o(base64_image):
-    if not OPENAI_KEY:
-        return "❌ ERRO: Chave OpenAI ausente para Visão."
-    try:
-        client = OpenAI(api_key=OPENAI_KEY)
-        prompt_vision = "Analise esta imagem (screenshot de uma questão do ENEM). Extraia o enunciado completo, o comando final e TODAS as alternativas, mantendo a formatação e ordem exatas (A, B, C, D, E). Seja estritamente um leitor de OCR de alta qualidade."
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "user", "content": [
-                    {"type": "text", "text": prompt_vision},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
-                ]}
-            ],
-            max_tokens=1024,
-            temperature=0.0
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"ERRO VISION API: {e}"
-
 def encode_image(image_file):
     return base64.b64encode(image_file.getvalue()).decode('utf-8')
 
@@ -117,9 +93,8 @@ def handle_follow_up(user_input):
 if modo == "📸 Resolver Questão (OCR)":
     st.header("🎓 Resolução Sênior (BrainX)")
     if st.button("Limpar Sessão e Começar Novo"):
-        st.session_state.resolution_base = ""
-        st.session_state.chat_history = []
-        st.rerun()
+        st.session_state.clear()
+        st.experimental_rerun()
 
     if not st.session_state.resolution_base:
         st.markdown("**1. Upload do Print:**")
@@ -127,15 +102,13 @@ if modo == "📸 Resolver Questão (OCR)":
         texto_extraido = ""
 
         if arquivo:
-            if not OPENAI_KEY:
-                st.error("❌ Chave OpenAI ausente para leitura da imagem (GPT-4o).")
-            else:
-                with st.spinner("👁️ GPT-4o Vision lendo e corrigindo texto..."):
-                    texto_extraido = ler_imagem_gpt4o(encode_image(arquivo))
-                    if "ERRO" in texto_extraido:
-                        st.error(f"❌ Falha Vision: {texto_extraido}")
-                    else:
-                        st.success("Texto lido e corrigido!")
+            with st.spinner("🔍 Fazendo OCR da imagem..."):
+                imagem = Image.open(arquivo)
+                texto_extraido = pytesseract.image_to_string(imagem, lang='por')
+                if texto_extraido.strip():
+                    st.success("Texto lido e corrigido!")
+                else:
+                    st.warning("❗ Não foi possível extrair texto da imagem.")
 
         st.markdown("**2. Enunciado:**")
         input_final = st.text_area("", value=texto_extraido if texto_extraido else "", height=250, placeholder="Cole ou edite a questão aqui...")
