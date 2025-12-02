@@ -9,6 +9,7 @@ from openai import OpenAI
 import io
 import re
 import base64
+import gc
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -104,10 +105,13 @@ def encode_image(image_file):
 def handle_follow_up(user_input):
     contexto_completo = f"CONTEÚDO BASE (RESOLUÇÃO ANTERIOR): {st.session_state.resolution_base}\n\nDÚVIDA DO ALUNO: {user_input}"
     with st.spinner("🔄 Sabiá-3 analisando sua dúvida..."):
-        response = chamar_brainx(contexto_completo, MARITACA_KEY, temperatura=0.1)
-    st.session_state.chat_history.append({"role": "user", "content": user_input})
-    st.session_state.chat_history.append({"role": "assistant", "content": response})
-    st.rerun()
+        resposta = chamar_brainx(contexto_completo, MARITACA_KEY, temperatura=0.1)
+    if "Erro" in resposta:
+        st.error("❌ Erro ao consultar a Maritaca: " + resposta)
+    else:
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        st.session_state.chat_history.append({"role": "assistant", "content": resposta})
+        st.rerun()
 
 # --- MÓDULO 1: OCR ---
 if modo == "📸 Resolver Questão (OCR)":
@@ -146,6 +150,7 @@ if modo == "📸 Resolver Questão (OCR)":
                 if "Erro" in resposta_base:
                     st.error("❌ A resolução não foi gerada corretamente.\n\n" + resposta_base)
                 else:
+                    st.success("✅ Resolução gerada com sucesso pela Sabiá!")
                     st.session_state.resolution_base = resposta_base
                     st.session_state.chat_history = [{"role": "assistant", "content": resposta_base}]
                     st.rerun()
@@ -154,7 +159,7 @@ if modo == "📸 Resolver Questão (OCR)":
         with st.expander("Ver Resolução Base", expanded=False):
             st.markdown(corrigir_latex_visual(st.session_state.resolution_base))
 
-        for message in st.session_state.chat_history:
+        for message in st.session_state.chat_history[-5:]:
             if message["role"] == "assistant":
                 st.info(corrigir_latex_visual(message["content"]))
             elif message["role"] == "user":
@@ -192,8 +197,11 @@ TAREFA OBRIGATÓRIA:
 
 Seja técnico e use a terminologia exata da nossa base XTRI.
 """
-        with st.spinner("🔄 Consultando base de inteligência TRI..."):
+        with st.spinner("🔄 Sabiá-3 consultando base TRI..."):
             plano = chamar_brainx(prompt_rota, MARITACA_KEY, temperatura=0.2)
+        if "Erro" in plano:
+            st.error("❌ Não foi possível gerar a Rota TRI.\n\n" + plano)
+        else:
             st.markdown("### 🧭 Plano de Ação XTRI")
             st.markdown(plano)
             st.info("💡 **Nota do BrainX:** Esta lista respeita a hierarquia da TRI encontrada no arquivo CSV oficial da XTRI.")
