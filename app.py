@@ -8,10 +8,11 @@ from PIL import Image
 import io
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
+# Mudei para "centered" para ficar mais elegante no meio da tela do iframe
 st.set_page_config(
     page_title="BrainX Neural Architect",
     page_icon="🧠",
-    layout="wide",
+    layout="centered", 
     initial_sidebar_state="expanded"
 )
 
@@ -19,34 +20,35 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main {background-color: #f8f9fa;}
-    h1 {color: #0F172A;}
+    h1 {color: #0F172A; font-size: 2.2rem;}
+    h2 {color: #1E293B; font-size: 1.5rem;}
     .stButton>button {
         background-color: #0F172A;
         color: white;
         border-radius: 8px;
-        height: 3em;
+        height: 3.5em;
         width: 100%;
         font-weight: bold;
         border: 1px solid #1E293B;
+        margin-top: 10px;
     }
     .stButton>button:hover {
-        background-color: #1E293B;
-        border-color: #334155;
+        background-color: #334155;
+        border-color: #475569;
     }
-    .stFileUploader {border-radius: 10px; border: 2px dashed #0F172A; padding: 10px;}
-    .stSuccess {background-color: #d1e7dd; color: #0f5132;}
-    .stInfo {background-color: #e0f2fe; color: #0369a1;}
+    .stFileUploader {border-radius: 10px; border: 2px dashed #0F172A; padding: 15px;}
+    .stSuccess {background-color: #d1e7dd; color: #0f5132; border-radius: 8px;}
+    .stInfo {background-color: #e0f2fe; color: #0369a1; border-radius: 8px;}
+    /* Ajuste para mobile no iframe */
+    .block-container {padding-top: 2rem; padding-bottom: 2rem;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- CABEÇALHO (BRANDING ATUALIZADO) ---
-col1, col2 = st.columns([1, 6])
-with col1:
-    # Placeholder de logo ou ícone cerebral
-    st.markdown("## 🧠") 
-with col2:
-    st.title("BrainX Neural ENEM Architect")
-    st.markdown("**Núcleo de Inteligência Artificial | Powered by XTRI**")
+# --- CABEÇALHO (Vertical) ---
+st.image("https://img.icons8.com/color/96/000000/brain--v1.png", width=70)
+st.title("BrainX Neural Architect")
+st.markdown("### Núcleo de Inteligência Artificial | **Powered by XTRI**")
+st.markdown("---")
 
 # --- SIDEBAR ---
 st.sidebar.header("⚙️ Configuração BrainX")
@@ -59,9 +61,9 @@ else:
 
 st.sidebar.markdown("---")
 modo = st.sidebar.radio("Ferramenta:", 
-    ["📸 Resolver Questão (OCR/Print)", "🧭 Rota de Estudos por TRI"]
+    ["📸 Resolver Questão (OCR)", "🧭 Rota de Estudos por TRI"]
 )
-st.sidebar.info("v3.1 Stable | Powered by XTRI")
+st.sidebar.info("v3.2 Stable | Powered by XTRI")
 
 # --- FUNÇÕES AUXILIARES ---
 
@@ -95,33 +97,30 @@ def extrair_texto_imagem(uploaded_file):
         return None
 
 # ==============================================================================
-# MÓDULO 1: RESOLVER QUESTÃO (PRINT/IMAGEM)
+# MÓDULO 1: RESOLVER QUESTÃO (OCR/Print) - LAYOUT VERTICAL
 # ==============================================================================
-if modo == "📸 Resolver Questão (OCR/Print)":
-    st.subheader("🎓 Resolução Sênior (BrainX)")
-    st.markdown("Faça upload do **PRINT** da questão.")
+if modo == "📸 Resolver Questão (OCR)":
+    st.header("🎓 Resolução Sênior (BrainX)")
+    st.info("Faça upload do **PRINT** da questão ou digite o texto abaixo.")
     
-    col_upload, col_texto = st.columns([1, 1])
-    
+    # 1. Upload
     texto_extraido = ""
+    arquivo = st.file_uploader("Subir Print da Tela (Imagem):", type=["png", "jpg", "jpeg"])
     
-    with col_upload:
-        # APENAS IMAGENS AGORA
-        arquivo = st.file_uploader("Subir Print da Tela:", type=["png", "jpg", "jpeg"])
-        if arquivo:
-            with st.spinner("👁️ BrainX analisando imagem..."):
-                texto_extraido = extrair_texto_imagem(arquivo)
-                if texto_extraido:
-                    st.success("Imagem lida com sucesso!")
-                    with st.expander("Ver texto extraído"):
-                        st.text(texto_extraido)
+    if arquivo:
+        with st.spinner("👁️ BrainX lendo imagem..."):
+            texto_extraido = extrair_texto_imagem(arquivo)
+            if texto_extraido:
+                st.success("Imagem processada!")
 
-    with col_texto:
-        input_final = st.text_area("Texto da Questão (Editável):", value=texto_extraido if texto_extraido else "", height=300)
+    # 2. Área de Texto (Preenchida auto ou manual)
+    st.markdown("**Confira ou digite o enunciado:**")
+    input_final = st.text_area("", value=texto_extraido if texto_extraido else "", height=250, placeholder="Cole a questão aqui...")
 
+    # 3. Botão de Ação
     if st.button("Resolver com Protocolo BrainX"):
         if not input_final:
-            st.warning("Precisamos da questão (Imagem ou Texto).")
+            st.warning("⚠️ Precisamos da questão (Imagem ou Texto).")
         else:
             prompt_final = f"""
 VOCÊ É O BRAINX (Powered by XTRI). RESOLVA SEGUINDO O PROTOCOLO DE ELITE:
@@ -142,32 +141,33 @@ Pule uma linha e escreva: "**GABARITO: [Letra]**"
 """
             with st.spinner("🧠 BrainX processando raciocínio..."):
                 resposta = chamar_brainx(prompt_final)
+                st.markdown("### 🧠 Resolução Detalhada")
                 st.markdown(resposta)
 
 # ==============================================================================
-# MÓDULO 2: ROTA TRI (UPLOAD DE SLIDE)
+# MÓDULO 2: ROTA TRI (SLIDE APENAS) - LAYOUT VERTICAL
 # ==============================================================================
 elif modo == "🧭 Rota de Estudos por TRI":
-    st.subheader("📊 Diagnóstico e Rota Personalizada (TRI)")
-    st.markdown("Suba o **Slide de Desempenho** (Print do gráfico ou tabela de erros).")
+    st.header("📊 Rota Personalizada (TRI)")
+    st.markdown("Suba o **Slide de Desempenho** (Print do gráfico/erros). O BrainX cruzará seus dados com a Matriz de Referência.")
     
-    col_area, col_file = st.columns([1, 2])
-    
-    with col_area:
-        area_foco = st.selectbox("Qual área focar?", ["Matemática", "Natureza", "Humanas", "Linguagens"])
-        nivel_atual = st.select_slider("Nível TRI estimado:", options=["< 500", "500-600", "600-700", "700-800", "800+"], value="600-700")
+    # 1. Configurações (Empilhadas)
+    st.markdown("**1. Defina seu perfil:**")
+    area_foco = st.selectbox("Qual área focar?", ["Matemática", "Natureza", "Humanas", "Linguagens"])
+    nivel_atual = st.select_slider("Nível TRI estimado:", options=["< 500", "500-600", "600-700", "700-800", "800+"], value="600-700")
 
-    with col_file:
-        # APENAS IMAGENS (SLIDES)
-        arquivo_aluno = st.file_uploader("Subir Slide do Boletim (IMG):", type=["png", "jpg", "jpeg"])
+    # 2. Upload (APENAS IMAGEM)
+    st.markdown("**2. Anexar Boletim (Slide/Print):**")
+    arquivo_aluno = st.file_uploader("Subir Imagem:", type=["png", "jpg", "jpeg"])
 
+    # 3. Botão de Ação
     if st.button("Gerar Rota Estratégica XTRI"):
         texto_aluno = ""
         if arquivo_aluno:
-            with st.spinner("🔍 BrainX lendo slide..."):
+            with st.spinner("🔍 BrainX analisando slide..."):
                 texto_aluno = extrair_texto_imagem(arquivo_aluno)
         
-        contexto_input = texto_aluno if texto_aluno else "Nenhum slide enviado. Gere rota baseada no nível TRI informado."
+        contexto_input = texto_aluno if texto_aluno else "Nenhum slide enviado. Gere rota baseada apenas no nível TRI informado."
 
         prompt_rota = f"""
 Atue como o BrainX Architect (Especialista em TRI e Matriz do ENEM).
@@ -187,10 +187,11 @@ Seja técnico, direto e estratégico.
 """
         with st.spinner("Construindo estratégia pedagógica..."):
             plano = chamar_brainx(prompt_rota, temperatura=0.5)
+            st.markdown("### 🧭 Plano de Ação")
             st.markdown(plano)
             
             st.info("💡 **Dica XTRI:** Domine a base antes de avançar. A TRI penaliza o acerto casual em questões difíceis se você errar as fáceis.")
 
 # --- RODAPÉ ---
 st.markdown("---")
-st.markdown("© 2025 BrainX | Powered by XTRI")
+st.markdown("© 2025 BrainX | **Powered by XTRI**")
