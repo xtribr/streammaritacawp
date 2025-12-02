@@ -38,7 +38,6 @@ st.markdown("""
     .stFileUploader {border-radius: 10px; border: 2px dashed #0F172A; padding: 15px;}
     .stSuccess {background-color: #d1e7dd; color: #0f5132; border-radius: 8px;}
     .stInfo {background-color: #e0f2fe; color: #0369a1; border-radius: 8px;}
-    /* Ajuste para mobile no iframe */
     .block-container {padding-top: 2rem; padding-bottom: 2rem;}
 </style>
 """, unsafe_allow_html=True)
@@ -62,7 +61,7 @@ st.sidebar.markdown("---")
 modo = st.sidebar.radio("Ferramenta:", 
     ["📸 Resolver Questão (OCR)", "🧭 Rota de Estudos por TRI"]
 )
-st.sidebar.info("v3.3 Stable | Powered by XTRI")
+st.sidebar.info("v3.4 Stable | Powered by XTRI")
 
 # --- FUNÇÕES AUXILIARES ---
 
@@ -144,45 +143,45 @@ Pule uma linha e escreva: "**GABARITO: [Letra]**"
                 st.markdown(resposta)
 
 # ==============================================================================
-# MÓDULO 2: ROTA TRI (AUTOMATIZADA)
+# MÓDULO 2: ROTA TRI (CSV REAL)
 # ==============================================================================
 elif modo == "🧭 Rota de Estudos por TRI":
     st.header("📊 Rota Estratégica (TRI)")
-    st.markdown("O BrainX irá consultar o arquivo **'Conteudos ENEM separados por TRI'** na nossa base para gerar sua rota.")
+    st.markdown("O BrainX irá consultar a base **'conteudos ENEM separados por TRI.csv'** para calibrar sua rota.")
     
     # 1. Configurações
     st.markdown("**Defina seu perfil:**")
     area_foco = st.selectbox("Área de Foco:", ["Matemática e suas Tecnologias", "Ciências da Natureza", "Ciências Humanas", "Linguagens e Códigos"])
     nivel_atual = st.select_slider("Seu Nível Atual:", options=["Iniciante (<500)", "Intermediário (500-700)", "Avançado (>700)", "Elite (800+)"], value="Intermediário (500-700)")
 
-    # 2. Ação (Sem Upload)
+    # 2. Ação
     if st.button("Gerar Rota XTRI"):
         
         prompt_rota = f"""
-Atue como o BrainX Architect (Especialista em Psicometria e TRI).
+Atue como o BrainX Architect (Especialista em TRI e Matriz de Referência do ENEM).
 O aluno deseja aumentar sua nota em **{area_foco}**.
 Nível Atual: **{nivel_atual}**.
 
 ACESSO À BASE DE CONHECIMENTO:
-Consulte mentalmente o arquivo "Conteudos ENEM separados por TRI" da nossa base XTRI.
+Consulte o arquivo "conteudos ENEM separados por TRI.csv" da nossa base XTRI.
 
 TAREFA OBRIGATÓRIA:
-1. **Diagnóstico TRI:** Explique quais tipos de competências este nível de aluno costuma errar.
+1. **Diagnóstico Matriz:** Explique quais competências da Matriz de Referência este nível de aluno precisa dominar.
 2. **Tabela de Prioridade (Mínimo 10 Itens):** Liste PELO MENOS 10 conteúdos específicos dessa matéria.
    - Coluna 1: Conteúdo
-   - Coluna 2: Habilidade BNCC (Ex: H17)
-   - Coluna 3: Importância na TRI (Use a nomenclatura do arquivo: "Base/Essencial", "Operacional/Média", "Global/Difícil" ou "Diferencial").
+   - Coluna 2: Habilidade Matriz (Ex: H17, H21)
+   - Coluna 3: Classificação TRI (Copie EXATAMENTE o termo que está na coluna de classificação do arquivo CSV. Não invente "Alta/Média", use a nomenclatura do arquivo).
    
-3. **Plano de Ação:** Como estudar esses 10 itens na ordem correta para maximizar a nota (não estude o difícil antes do fácil).
+3. **Plano de Ação:** Como estudar esses 10 itens na ordem correta para maximizar a nota (TRI prioriza coerência: fáceis primeiro).
 
 Seja técnico e use a terminologia exata da nossa base XTRI.
 """
-        with st.spinner("🔄 Consultando base 'Conteudos ENEM separados por TRI'..."):
-            plano = chamar_brainx(prompt_rota, temperatura=0.2) # Temp baixa para ser fiel à base
+        with st.spinner("🔄 Consultando CSV 'conteudos ENEM separados por TRI'..."):
+            plano = chamar_brainx(prompt_rota, temperatura=0.2) 
             st.markdown("### 🧭 Plano de Ação XTRI")
             st.markdown(plano)
             
-            st.info("💡 **Nota do BrainX:** Esta lista foi extraída da nossa base de inteligência TRI. Domine os itens 'Essenciais' para garantir o piso da sua nota.")
+            st.info("💡 **Nota do BrainX:** Esta lista respeita a hierarquia da TRI encontrada no arquivo CSV oficial da XTRI.")
 
 # --- RODAPÉ ---
 st.markdown("---")
