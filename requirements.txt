@@ -4,4 +4,4 @@ pandas
 matplotlib
 openai
 Pillow
-pytesseract  # A biblioteca que deu erro
+pytesseract
