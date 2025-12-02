@@ -43,9 +43,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- CABEÇALHO ---
-st.image("https://img.icons8.com/color/96/000000/brain--v1.png", width=70)
-st.title("BrainX Neural Architect")
-st.markdown("### Núcleo de Inteligência Artificial | **Powered by XTRI**")
+col1, col2 = st.columns([1, 5])
+with col1:
+    st.image("https://img.icons8.com/color/96/000000/brain--v1.png", width=70)
+with col2:
+    st.title("BrainX Neural Architect")
+    st.markdown("### Núcleo de Inteligência Artificial | **Powered by XTRI**")
 st.markdown("---")
 
 # --- SIDEBAR ---
@@ -61,7 +64,7 @@ st.sidebar.markdown("---")
 modo = st.sidebar.radio("Ferramenta:", 
     ["📸 Resolver Questão (OCR)", "🧭 Rota de Estudos por TRI"]
 )
-st.sidebar.info("v3.4 Stable | Powered by XTRI")
+st.sidebar.info("v3.5 Latex Fix | Powered by XTRI")
 
 # --- FUNÇÕES AUXILIARES ---
 
@@ -120,8 +123,15 @@ if modo == "📸 Resolver Questão (OCR)":
         if not input_final:
             st.warning("⚠️ Precisamos da questão (Imagem ou Texto).")
         else:
+            # --- AQUI ESTÁ A CORREÇÃO DE FORMATAÇÃO ---
             prompt_final = f"""
 VOCÊ É O BRAINX (Powered by XTRI). RESOLVA SEGUINDO O PROTOCOLO DE ELITE:
+
+REGRAS DE FORMATAÇÃO MATEMÁTICA (OBRIGATÓRIO):
+- Use LaTeX para TODAS as fórmulas e números com unidades.
+- Para fórmulas na mesma linha (inline), use UM cifrão: $ E = mc^2 $
+- Para fórmulas em destaque (bloco), use DOIS cifrões: $$ x = \\frac{{-b \\pm \\sqrt{{\Delta}}}}{{2a}} $$
+- NÃO use colchetes como \[ ... \] ou \( ... \). Use APENAS $.
 
 PASSO 1: ANÁLISE INICIAL (Dados e Comando)
 PASSO 2: PLANEJAMENTO (Conceitos)
@@ -143,7 +153,7 @@ Pule uma linha e escreva: "**GABARITO: [Letra]**"
                 st.markdown(resposta)
 
 # ==============================================================================
-# MÓDULO 2: ROTA TRI (CSV REAL)
+# MÓDULO 2: ROTA TRI (AUTOMATIZADA)
 # ==============================================================================
 elif modo == "🧭 Rota de Estudos por TRI":
     st.header("📊 Rota Estratégica (TRI)")
@@ -163,7 +173,7 @@ O aluno deseja aumentar sua nota em **{area_foco}**.
 Nível Atual: **{nivel_atual}**.
 
 ACESSO À BASE DE CONHECIMENTO:
-Consulte o arquivo "conteudos ENEM separados por TRI.csv" da nossa base XTRI.
+Consulte mentalmente o arquivo "conteudos ENEM separados por TRI.csv" da nossa base XTRI.
 
 TAREFA OBRIGATÓRIA:
 1. **Diagnóstico Matriz:** Explique quais competências da Matriz de Referência este nível de aluno precisa dominar.
@@ -174,7 +184,9 @@ TAREFA OBRIGATÓRIA:
    
 3. **Plano de Ação:** Como estudar esses 10 itens na ordem correta para maximizar a nota (TRI prioriza coerência: fáceis primeiro).
 
-Seja técnico e use a terminologia exata da nossa base XTRI.
+REGRAS VISUAIS:
+- Use tabelas Markdown para listar os conteúdos.
+- Use negrito para destacar termos chave.
 """
         with st.spinner("🔄 Consultando CSV 'conteudos ENEM separados por TRI'..."):
             plano = chamar_brainx(prompt_rota, temperatura=0.2) 
