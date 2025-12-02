@@ -3,66 +3,70 @@ import requests
 import pandas as pd
 import matplotlib.pyplot as plt
 import time
-import pdfplumber
 import pytesseract
 from PIL import Image
 import io
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Neural ENEM Architect",
+    page_title="BrainX Neural Architect",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- ESTILIZAÇÃO CSS ---
+# --- ESTILIZAÇÃO CSS (Identidade XTRI) ---
 st.markdown("""
 <style>
     .main {background-color: #f8f9fa;}
-    h1 {color: #1E3A8A;}
+    h1 {color: #0F172A;}
     .stButton>button {
-        background-color: #1E3A8A;
+        background-color: #0F172A;
         color: white;
         border-radius: 8px;
         height: 3em;
         width: 100%;
         font-weight: bold;
+        border: 1px solid #1E293B;
     }
-    .stFileUploader {border-radius: 10px; border: 2px dashed #1E3A8A; padding: 10px;}
+    .stButton>button:hover {
+        background-color: #1E293B;
+        border-color: #334155;
+    }
+    .stFileUploader {border-radius: 10px; border: 2px dashed #0F172A; padding: 10px;}
     .stSuccess {background-color: #d1e7dd; color: #0f5132;}
-    .stInfo {background-color: #cff4fc; color: #055160;}
+    .stInfo {background-color: #e0f2fe; color: #0369a1;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- CABEÇALHO ---
+# --- CABEÇALHO (BRANDING ATUALIZADO) ---
 col1, col2 = st.columns([1, 6])
 with col1:
-    st.image("https://img.icons8.com/color/96/000000/brain--v1.png", width=80)
+    # Placeholder de logo ou ícone cerebral
+    st.markdown("## 🧠") 
 with col2:
-    st.title("Neural ENEM Architect")
-    st.markdown("**Núcleo de Inteligência Artificial | Powered by Sabiá-3**")
+    st.title("BrainX Neural ENEM Architect")
+    st.markdown("**Núcleo de Inteligência Artificial | Powered by XTRI**")
 
 # --- SIDEBAR ---
-st.sidebar.header("⚙️ Configuração")
+st.sidebar.header("⚙️ Configuração BrainX")
 
 if "api_gpt_assistente" in st.secrets:
     api_key = st.secrets["api_gpt_assistente"]
-    st.sidebar.success("✅ API Conectada")
+    st.sidebar.success("✅ BrainX Conectado")
 else:
     api_key = st.sidebar.text_input("Chave API:", type="password")
 
 st.sidebar.markdown("---")
-# Menu simplificado conforme seu pedido
 modo = st.sidebar.radio("Ferramenta:", 
-    ["📸 Resolver Questão (OCR/PDF)", "🧭 Rota de Estudos por TRI"]
+    ["📸 Resolver Questão (OCR/Print)", "🧭 Rota de Estudos por TRI"]
 )
-st.sidebar.info("v3.0 | Vision Enabled")
+st.sidebar.info("v3.1 Stable | Powered by XTRI")
 
-# --- FUNÇÕES AUXILIARES (OCR & API) ---
+# --- FUNÇÕES AUXILIARES ---
 
 @st.cache_data(show_spinner=False)
-def chamar_sabia(prompt, temperatura=0.0):
+def chamar_brainx(prompt, temperatura=0.0):
     if not api_key: return "⚠️ ERRO: Chave API ausente."
     
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
@@ -77,61 +81,50 @@ def chamar_sabia(prompt, temperatura=0.0):
         response = requests.post("https://chat.maritaca.ai/api/chat/completions", headers=headers, json=data)
         if response.status_code == 200:
             return response.json()['choices'][0]['message']['content']
-        return f"Erro API ({response.status_code}): {response.text}"
+        return f"Erro BrainX API ({response.status_code}): {response.text}"
     except Exception as e:
         return f"Erro Conexão: {str(e)}"
 
-def extrair_texto_arquivo(uploaded_file):
-    texto = ""
+def extrair_texto_imagem(uploaded_file):
     try:
-        if uploaded_file.type == "application/pdf":
-            with pdfplumber.open(uploaded_file) as pdf:
-                for page in pdf.pages:
-                    texto += page.extract_text() + "\n"
-        elif uploaded_file.type in ["image/png", "image/jpeg", "image/jpg"]:
-            image = Image.open(uploaded_file)
-            # Tenta usar OCR. Se falhar no servidor, avisa.
-            try:
-                texto = pytesseract.image_to_string(image, lang='por')
-            except:
-                st.error("⚠️ Ocorreu um erro no motor de OCR (Tesseract). O servidor pode não ter a biblioteca instalada.")
-                return None
+        image = Image.open(uploaded_file)
+        texto = pytesseract.image_to_string(image, lang='por')
+        return texto
     except Exception as e:
-        st.error(f"Erro ao ler arquivo: {e}")
+        st.error(f"Erro no OCR: {e}")
         return None
-    return texto
 
 # ==============================================================================
-# MÓDULO 1: RESOLVER QUESTÃO (OCR/PDF)
+# MÓDULO 1: RESOLVER QUESTÃO (PRINT/IMAGEM)
 # ==============================================================================
-if modo == "📸 Resolver Questão (OCR/PDF)":
-    st.subheader("🎓 Resolução Sênior (Suporte a Print e PDF)")
-    st.markdown("Faça upload do print da questão ou digite o texto.")
+if modo == "📸 Resolver Questão (OCR/Print)":
+    st.subheader("🎓 Resolução Sênior (BrainX)")
+    st.markdown("Faça upload do **PRINT** da questão.")
     
     col_upload, col_texto = st.columns([1, 1])
     
     texto_extraido = ""
     
     with col_upload:
-        arquivo = st.file_uploader("Subir Print ou PDF:", type=["png", "jpg", "jpeg", "pdf"])
+        # APENAS IMAGENS AGORA
+        arquivo = st.file_uploader("Subir Print da Tela:", type=["png", "jpg", "jpeg"])
         if arquivo:
-            with st.spinner("🔍 Extraindo texto da imagem/PDF..."):
-                texto_extraido = extrair_texto_arquivo(arquivo)
+            with st.spinner("👁️ BrainX analisando imagem..."):
+                texto_extraido = extrair_texto_imagem(arquivo)
                 if texto_extraido:
-                    st.success("Texto extraído com sucesso!")
+                    st.success("Imagem lida com sucesso!")
                     with st.expander("Ver texto extraído"):
                         st.text(texto_extraido)
 
     with col_texto:
-        # Se houve upload, preenche a caixa. Se não, deixa digitar.
-        input_final = st.text_area("Texto da Questão:", value=texto_extraido if texto_extraido else "", height=300)
+        input_final = st.text_area("Texto da Questão (Editável):", value=texto_extraido if texto_extraido else "", height=300)
 
-    if st.button("Resolver com Protocolo 7 Passos"):
+    if st.button("Resolver com Protocolo BrainX"):
         if not input_final:
-            st.warning("Precisamos da questão (Texto ou Arquivo).")
+            st.warning("Precisamos da questão (Imagem ou Texto).")
         else:
             prompt_final = f"""
-VOCÊ É O SABIÁ-3. RESOLVA SEGUINDO O PROTOCOLO DE ELITE:
+VOCÊ É O BRAINX (Powered by XTRI). RESOLVA SEGUINDO O PROTOCOLO DE ELITE:
 
 PASSO 1: ANÁLISE INICIAL (Dados e Comando)
 PASSO 2: PLANEJAMENTO (Conceitos)
@@ -141,64 +134,63 @@ PASSO 5: ANÁLISE DAS ALTERNATIVAS (Justifique erros dos distratores)
 PASSO 6: ESCOLHA FINAL
 PASSO 7: VERIFICAÇÃO FINAL
 
-QUESTÃO DO ALUNO (Pode conter erros de OCR, corrija mentalmente):
+QUESTÃO DO ALUNO (OCR):
 {input_final}
 
 RESPOSTA FINAL:
 Pule uma linha e escreva: "**GABARITO: [Letra]**"
 """
-            with st.spinner("🧠 Sabiá-3 analisando questão..."):
-                resposta = chamar_sabia(prompt_final)
+            with st.spinner("🧠 BrainX processando raciocínio..."):
+                resposta = chamar_brainx(prompt_final)
                 st.markdown(resposta)
 
 # ==============================================================================
-# MÓDULO 2: ROTA TRI (UPLOAD DE SLIDE/BOLETIM)
+# MÓDULO 2: ROTA TRI (UPLOAD DE SLIDE)
 # ==============================================================================
 elif modo == "🧭 Rota de Estudos por TRI":
     st.subheader("📊 Diagnóstico e Rota Personalizada (TRI)")
-    st.markdown("Suba seu **Slide de Desempenho** ou **Boletim de Erros**. A IA vai cruzar seus erros com a Matriz de Referência.")
+    st.markdown("Suba o **Slide de Desempenho** (Print do gráfico ou tabela de erros).")
     
     col_area, col_file = st.columns([1, 2])
     
     with col_area:
         area_foco = st.selectbox("Qual área focar?", ["Matemática", "Natureza", "Humanas", "Linguagens"])
-        nivel_atual = st.select_slider("Seu nível atual (TRI estimada):", options=["< 500", "500-600", "600-700", "700-800", "800+"], value="600-700")
+        nivel_atual = st.select_slider("Nível TRI estimado:", options=["< 500", "500-600", "600-700", "700-800", "800+"], value="600-700")
 
     with col_file:
-        arquivo_aluno = st.file_uploader("Subir Slide/Boletim (PDF/IMG):", type=["pdf", "png", "jpg"])
+        # APENAS IMAGENS (SLIDES)
+        arquivo_aluno = st.file_uploader("Subir Slide do Boletim (IMG):", type=["png", "jpg", "jpeg"])
 
-    if st.button("Gerar Rota Estratégica"):
+    if st.button("Gerar Rota Estratégica XTRI"):
         texto_aluno = ""
         if arquivo_aluno:
-            with st.spinner("🔍 Lendo seu desempenho..."):
-                texto_aluno = extrair_texto_arquivo(arquivo_aluno)
+            with st.spinner("🔍 BrainX lendo slide..."):
+                texto_aluno = extrair_texto_imagem(arquivo_aluno)
         
-        # Se não tiver arquivo, ele gera uma rota baseada apenas no nível
-        contexto_input = texto_aluno if texto_aluno else "Nenhum arquivo enviado. Gere rota baseada no nível TRI informado."
+        contexto_input = texto_aluno if texto_aluno else "Nenhum slide enviado. Gere rota baseada no nível TRI informado."
 
         prompt_rota = f"""
-Atue como um Especialista em Psicometria e Matriz do ENEM.
+Atue como o BrainX Architect (Especialista em TRI e Matriz do ENEM).
 O aluno deseja aumentar sua nota em **{area_foco}**.
-Nível Atual estimado: **{nivel_atual}**.
+Nível Atual: **{nivel_atual}**.
 
-DADOS DO ALUNO (Do arquivo enviado):
+DADOS DO SLIDE/BOLETIM:
 {contexto_input[:4000]} 
 
 TAREFA:
-1. **Diagnóstico TRI:** Baseado no nível e nos erros (se houver no texto), identifique quais Habilidades da Matriz ele está errando (Básicas, Operacionais ou Global).
-2. **Rota de Estudos:** Crie um plano sequencial para subir de nível.
-   - Se Nível Baixo: Foque em Matriz de Referência Básica (conteúdos que mais pontuam).
-   - Se Nível Alto: Foque em Habilidades de refino e conteúdos de baixa incidência (diferencial).
-3. **Tabela:** Liste: Conteúdo | Habilidade BNCC Provável | Importância na TRI.
+1. **Diagnóstico TRI:** Identifique quais Habilidades da Matriz o aluno está errando.
+2. **Rota de Estudos XTRI:** Crie um plano sequencial para subir de nível.
+   - Foque nas habilidades que dão mais pontos na TRI para o nível dele.
+3. **Tabela:** Liste: Conteúdo | Habilidade BNCC | Importância na TRI.
 
-Seja técnico mas didático.
+Seja técnico, direto e estratégico.
 """
         with st.spinner("Construindo estratégia pedagógica..."):
-            plano = chamar_sabia(prompt_rota, temperatura=0.5)
+            plano = chamar_brainx(prompt_rota, temperatura=0.5)
             st.markdown(plano)
             
-            st.info("💡 **Dica TRI:** Para subir de nível, garanta primeiro as questões fáceis (coerência pedagógica) antes de tentar as difíceis.")
+            st.info("💡 **Dica XTRI:** Domine a base antes de avançar. A TRI penaliza o acerto casual em questões difíceis se você errar as fáceis.")
 
 # --- RODAPÉ ---
 st.markdown("---")
-st.markdown("© 2025 Neural ENEM Architect")
+st.markdown("© 2025 BrainX | Powered by XTRI")
