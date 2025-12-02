@@ -8,7 +8,6 @@ from PIL import Image
 import io
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-# Mudei para "centered" para ficar mais elegante no meio da tela do iframe
 st.set_page_config(
     page_title="BrainX Neural Architect",
     page_icon="🧠",
@@ -44,7 +43,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- CABEÇALHO (Vertical) ---
+# --- CABEÇALHO ---
 st.image("https://img.icons8.com/color/96/000000/brain--v1.png", width=70)
 st.title("BrainX Neural Architect")
 st.markdown("### Núcleo de Inteligência Artificial | **Powered by XTRI**")
@@ -63,7 +62,7 @@ st.sidebar.markdown("---")
 modo = st.sidebar.radio("Ferramenta:", 
     ["📸 Resolver Questão (OCR)", "🧭 Rota de Estudos por TRI"]
 )
-st.sidebar.info("v3.2 Stable | Powered by XTRI")
+st.sidebar.info("v3.3 Stable | Powered by XTRI")
 
 # --- FUNÇÕES AUXILIARES ---
 
@@ -76,7 +75,7 @@ def chamar_brainx(prompt, temperatura=0.0):
         "model": "sabia-3", 
         "messages": [{"role": "user", "content": prompt}],
         "temperature": temperatura,
-        "max_tokens": 3000
+        "max_tokens": 3500
     }
     
     try:
@@ -97,11 +96,11 @@ def extrair_texto_imagem(uploaded_file):
         return None
 
 # ==============================================================================
-# MÓDULO 1: RESOLVER QUESTÃO (OCR/Print) - LAYOUT VERTICAL
+# MÓDULO 1: RESOLVER QUESTÃO (OCR)
 # ==============================================================================
 if modo == "📸 Resolver Questão (OCR)":
     st.header("🎓 Resolução Sênior (BrainX)")
-    st.info("Faça upload do **PRINT** da questão ou digite o texto abaixo.")
+    st.info("Faça upload do **PRINT** da questão ou digite o texto.")
     
     # 1. Upload
     texto_extraido = ""
@@ -113,11 +112,11 @@ if modo == "📸 Resolver Questão (OCR)":
             if texto_extraido:
                 st.success("Imagem processada!")
 
-    # 2. Área de Texto (Preenchida auto ou manual)
+    # 2. Texto
     st.markdown("**Confira ou digite o enunciado:**")
     input_final = st.text_area("", value=texto_extraido if texto_extraido else "", height=250, placeholder="Cole a questão aqui...")
 
-    # 3. Botão de Ação
+    # 3. Ação
     if st.button("Resolver com Protocolo BrainX"):
         if not input_final:
             st.warning("⚠️ Precisamos da questão (Imagem ou Texto).")
@@ -145,52 +144,45 @@ Pule uma linha e escreva: "**GABARITO: [Letra]**"
                 st.markdown(resposta)
 
 # ==============================================================================
-# MÓDULO 2: ROTA TRI (SLIDE APENAS) - LAYOUT VERTICAL
+# MÓDULO 2: ROTA TRI (AUTOMATIZADA)
 # ==============================================================================
 elif modo == "🧭 Rota de Estudos por TRI":
-    st.header("📊 Rota Personalizada (TRI)")
-    st.markdown("Suba o **Slide de Desempenho** (Print do gráfico/erros). O BrainX cruzará seus dados com a Matriz de Referência.")
+    st.header("📊 Rota Estratégica (TRI)")
+    st.markdown("O BrainX irá consultar o arquivo **'Conteudos ENEM separados por TRI'** na nossa base para gerar sua rota.")
     
-    # 1. Configurações (Empilhadas)
-    st.markdown("**1. Defina seu perfil:**")
-    area_foco = st.selectbox("Qual área focar?", ["Matemática", "Natureza", "Humanas", "Linguagens"])
-    nivel_atual = st.select_slider("Nível TRI estimado:", options=["< 500", "500-600", "600-700", "700-800", "800+"], value="600-700")
+    # 1. Configurações
+    st.markdown("**Defina seu perfil:**")
+    area_foco = st.selectbox("Área de Foco:", ["Matemática e suas Tecnologias", "Ciências da Natureza", "Ciências Humanas", "Linguagens e Códigos"])
+    nivel_atual = st.select_slider("Seu Nível Atual:", options=["Iniciante (<500)", "Intermediário (500-700)", "Avançado (>700)", "Elite (800+)"], value="Intermediário (500-700)")
 
-    # 2. Upload (APENAS IMAGEM)
-    st.markdown("**2. Anexar Boletim (Slide/Print):**")
-    arquivo_aluno = st.file_uploader("Subir Imagem:", type=["png", "jpg", "jpeg"])
-
-    # 3. Botão de Ação
-    if st.button("Gerar Rota Estratégica XTRI"):
-        texto_aluno = ""
-        if arquivo_aluno:
-            with st.spinner("🔍 BrainX analisando slide..."):
-                texto_aluno = extrair_texto_imagem(arquivo_aluno)
+    # 2. Ação (Sem Upload)
+    if st.button("Gerar Rota XTRI"):
         
-        contexto_input = texto_aluno if texto_aluno else "Nenhum slide enviado. Gere rota baseada apenas no nível TRI informado."
-
         prompt_rota = f"""
-Atue como o BrainX Architect (Especialista em TRI e Matriz do ENEM).
+Atue como o BrainX Architect (Especialista em Psicometria e TRI).
 O aluno deseja aumentar sua nota em **{area_foco}**.
 Nível Atual: **{nivel_atual}**.
 
-DADOS DO SLIDE/BOLETIM:
-{contexto_input[:4000]} 
+ACESSO À BASE DE CONHECIMENTO:
+Consulte mentalmente o arquivo "Conteudos ENEM separados por TRI" da nossa base XTRI.
 
-TAREFA:
-1. **Diagnóstico TRI:** Identifique quais Habilidades da Matriz o aluno está errando.
-2. **Rota de Estudos XTRI:** Crie um plano sequencial para subir de nível.
-   - Foque nas habilidades que dão mais pontos na TRI para o nível dele.
-3. **Tabela:** Liste: Conteúdo | Habilidade BNCC | Importância na TRI.
+TAREFA OBRIGATÓRIA:
+1. **Diagnóstico TRI:** Explique quais tipos de competências este nível de aluno costuma errar.
+2. **Tabela de Prioridade (Mínimo 10 Itens):** Liste PELO MENOS 10 conteúdos específicos dessa matéria.
+   - Coluna 1: Conteúdo
+   - Coluna 2: Habilidade BNCC (Ex: H17)
+   - Coluna 3: Importância na TRI (Use a nomenclatura do arquivo: "Base/Essencial", "Operacional/Média", "Global/Difícil" ou "Diferencial").
+   
+3. **Plano de Ação:** Como estudar esses 10 itens na ordem correta para maximizar a nota (não estude o difícil antes do fácil).
 
-Seja técnico, direto e estratégico.
+Seja técnico e use a terminologia exata da nossa base XTRI.
 """
-        with st.spinner("Construindo estratégia pedagógica..."):
-            plano = chamar_brainx(prompt_rota, temperatura=0.5)
-            st.markdown("### 🧭 Plano de Ação")
+        with st.spinner("🔄 Consultando base 'Conteudos ENEM separados por TRI'..."):
+            plano = chamar_brainx(prompt_rota, temperatura=0.2) # Temp baixa para ser fiel à base
+            st.markdown("### 🧭 Plano de Ação XTRI")
             st.markdown(plano)
             
-            st.info("💡 **Dica XTRI:** Domine a base antes de avançar. A TRI penaliza o acerto casual em questões difíceis se você errar as fáceis.")
+            st.info("💡 **Nota do BrainX:** Esta lista foi extraída da nossa base de inteligência TRI. Domine os itens 'Essenciais' para garantir o piso da sua nota.")
 
 # --- RODAPÉ ---
 st.markdown("---")
