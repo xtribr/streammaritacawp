@@ -209,6 +209,48 @@ Seja técnico e use a terminologia exata da nossa base XTRI.
             
             st.info("💡 **Nota do BrainX:** Esta lista respeita a hierarquia da TRI encontrada no arquivo CSV oficial da XTRI.")
 
+# ==============================================================================
+# MÓDULO 2: ROTA TRI (AUTOMATIZADA E CORRIGIDA)
+# ==============================================================================
+elif modo == "🧭 Rota de Estudos por TRI":
+    st.header("📊 Rota Estratégica (TRI)")
+    st.markdown("O BrainX irá consultar a base **'conteudos ENEM separados por TRI.csv'** para calibrar sua rota.")
+    
+    # 1. Configurações
+    st.markdown("**Defina seu perfil:**")
+    area_foco = st.selectbox("Área de Foco:", ["Matemática e suas Tecnologias", "Ciências da Natureza", "Ciências Humanas", "Linguagens e Códigos"])
+    nivel_atual = st.select_slider("Seu Nível Atual:", options=["Iniciante (<500)", "Intermediário (500-700)", "Avançado (>700)", "Elite (800+)"], value="Intermediário (500-700)")
+
+    # 2. Ação (Sem Upload)
+    if st.button("Gerar Rota XTRI"):
+        
+        # PROMPT COM INSTRUÇÃO DE CONSULTA OBRIGATÓRIA AO ARQUIVO
+        prompt_rota = f"""
+Atue como o BrainX Architect (Especialista em TRI e Matriz de Referência do ENEM).
+O aluno deseja aumentar sua nota em **{area_foco}**.
+Nível Atual: **{nivel_atual}**.
+
+ACESSO À BASE DE CONHECIMENTO (Obrigatório):
+Consulte o arquivo "conteudos ENEM separados por TRI.csv" da nossa base XTRI.
+
+TAREFA OBRIGATÓRIA:
+1. **Diagnóstico Matriz:** Explique quais competências da Matriz de Referência este nível de aluno precisa dominar.
+2. **Tabela de Prioridade (Mínimo 10 Itens):** Liste PELO MENOS 10 conteúdos específicos dessa matéria.
+   - Coluna 1: Conteúdo
+   - Coluna 2: Habilidade Matriz (Ex: H17, H21)
+   - Coluna 3: Classificação TRI (Copie EXATAMENTE o termo que está na coluna de classificação do arquivo CSV. Use a nomenclatura do arquivo, não Alta/Média).
+   
+3. **Plano de Ação:** Como estudar esses 10 itens na ordem correta para maximizar a nota (TRI prioriza coerência: fáceis primeiro).
+
+Seja técnico e use a terminologia exata da nossa base XTRI.
+"""
+        with st.spinner("🔄 Consultando base de inteligência TRI..."):
+            plano = chamar_brainx(prompt_rota, MARITACA_KEY, temperatura=0.2) 
+            st.markdown("### 🧭 Plano de Ação XTRI")
+            st.markdown(plano)
+            
+            st.info("💡 **Nota do BrainX:** Esta lista respeita a hierarquia da TRI encontrada no arquivo CSV oficial da XTRI.")
+
 # --- RODAPÉ ---
 st.markdown("---")
 st.markdown("© 2025 BrainX | **Powered by XTRI**")
