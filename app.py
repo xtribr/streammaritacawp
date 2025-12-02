@@ -103,7 +103,8 @@ def encode_image(image_file):
 
 def handle_follow_up(user_input):
     contexto_completo = f"CONTEÚDO BASE (RESOLUÇÃO ANTERIOR): {st.session_state.resolution_base}\n\nDÚVIDA DO ALUNO: {user_input}"
-    response = chamar_brainx(contexto_completo, MARITACA_KEY, temperatura=0.1)
+    with st.spinner("🔄 Sabiá-3 analisando sua dúvida..."):
+        response = chamar_brainx(contexto_completo, MARITACA_KEY, temperatura=0.1)
     st.session_state.chat_history.append({"role": "user", "content": user_input})
     st.session_state.chat_history.append({"role": "assistant", "content": response})
     st.rerun()
@@ -142,10 +143,12 @@ if modo == "📸 Resolver Questão (OCR)":
                 prompt_inicial = f"""[PROTOCOLO DE 7 PASSOS] RESOLVA A QUESTÃO:\n{input_final}\n\nRESPOSTA FINAL OBRIGATÓRIA: **GABARITO: [Letra]**"""
                 with st.spinner("🧠 Sabiá-3 gerando a resolução base..."):
                     resposta_base = chamar_brainx(prompt_inicial, MARITACA_KEY)
-                st.session_state.resolution_base = resposta_base
-                st.session_state.chat_history = [{"role": "assistant", "content": resposta_base}]
-                st.rerun()
-
+                if "Erro" in resposta_base:
+                    st.error("❌ A resolução não foi gerada corretamente.\n\n" + resposta_base)
+                else:
+                    st.session_state.resolution_base = resposta_base
+                    st.session_state.chat_history = [{"role": "assistant", "content": resposta_base}]
+                    st.rerun()
     else:
         st.subheader("💬 Tutoria Interativa BrainX")
         with st.expander("Ver Resolução Base", expanded=False):
@@ -157,7 +160,7 @@ if modo == "📸 Resolver Questão (OCR)":
             elif message["role"] == "user":
                 st.markdown(f"**Você:** {message['content']}")
 
-        user_input = st.text_input("Sua Dúvida sobre a resolução:")
+        user_input = st.text_input("Sua Dúvida sobre a resolução:", key="duvida_resolucao")
         if user_input and st.session_state.resolution_base:
             handle_follow_up(user_input)
 
